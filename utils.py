@@ -74,7 +74,7 @@ def check_cancer_positive(report_lines: list):
 
 
 def check_fracture_positive(report_lines: list):
-    rule = "([fF]racture)"
+    rule = "([fF]racture |[Dd]islocate)"
     negation = "(no |NO |No |not |NOT |Not |[Nn]egative |SUGGESTED |rule out)"
     present = False
     for line in report_lines:
