@@ -62,8 +62,8 @@ if __name__ == "__main__":
 
     if user_ext in [".pdf", ".doc", ".docx", ".txt"]:
         ext = user_ext
-        files_dir = ""  # input/source path
-        save_dir = ""  # destination path
+        files_dir = "/data_nas5/qct/external_data/aarthi_scans/aarti_scans_270322/reports/random"  # input/source path
+        save_dir = "/data_nas5/qct/external_data/aarthi_scans/aarti_scans_270322/reports/random_anonymized"  # destination path
 
         # Get all files with the specified extension
         all_files = get_files(files_dir, ext, folder_depth=depth)
@@ -97,16 +97,16 @@ if __name__ == "__main__":
 
     if ext:
         end_idx = len(all_files)
-        failed_txt_path = os.path.join(files_dir, f"failed_{ext[1:]}.txt")
+        failed_txt_path = os.path.join(save_dir, f"failed_{ext[1:]}.txt")
         print(f"Found {ext} files: {len(all_files)}")
 
         # Create the save directory if it doesn't exist
-        os.makedirs(files_dir, exist_ok=True)
+        os.makedirs(save_dir, exist_ok=True)
 
         partial_fun = partial(
             anonymize_file,
             files_dir=files_dir,
-            save_dir=files_dir,
+            save_dir=save_dir,
             ext=ext,
             same_line=same_line,
             other_tags=other_tags,
