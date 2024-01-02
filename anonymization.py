@@ -2,7 +2,7 @@ import os
 from tqdm import tqdm
 from functools import partial
 from anonymize_dicoms import anonymize_dicom
-from anonymize_report import anonymize_report, doc2txt, pdf2txt, html2txt
+from anonymize_report import anonymize_report, doc2txt, pdf2txt
 import shutil
 from utils import get_files, apply_fun, get_anonymization_path
 
@@ -21,9 +21,9 @@ def anonymize_file(file, files_dir, save_dir, ext, same_line=0, other_tags=None)
         elif ext == ".pdf":
             pdf2txt(file, target_path)
             out = anonymize_report(target_path, same_line=same_line)
-        elif ext == ".html":
-            html2txt(file, target_path)
-            out = anonymize_report(target_path, same_line=same_line)
+        # elif ext == ".html":
+        #     html2txt(file, target_path)
+        #     out = anonymize_report(target_path, same_line=same_line)
         elif ext == ".txt":
             shutil.copy(file, target_path)
             out = anonymize_report(target_path, same_line=same_line)
@@ -51,6 +51,32 @@ def save_empty_folder_path(folder_path, ext, save_dir):
         empty_folder_file.write(f"{folder_path}\n")
 
 
+def anonymize_and_save(files_dir, save_dir, ext, same_line, other_tags, start_idx, batch_size, num_procs, depth):
+    all_files = get_files(files_dir, ext, folder_depth=depth)
+
+    if not all_files:
+        save_empty_folder_path(files_dir, ext, empty_folders_save_dir)
+        return  # Skip the rest of the processing for this folder
+
+    end_idx = len(all_files)
+    failed_txt_path = os.path.join(save_dir, f"failed_{ext[1:]}.txt")
+    print(f"Found {ext} files: {len(all_files)}")
+
+    # Create the save directory if it doesn't exist
+    os.makedirs(save_dir, exist_ok=True)
+
+    partial_fun = partial(anonymize_file, files_dir=files_dir, save_dir=save_dir, ext=ext, same_line=same_line, other_tags=other_tags)
+
+    with open(failed_txt_path, "a") as doc:
+        for idx in tqdm(range(start_idx, end_idx, batch_size)):
+            samples = all_files[idx:idx + batch_size] if idx + batch_size < end_idx else all_files[idx:end_idx]
+            output = apply_fun(samples, partial_fun, num_procs=num_procs)
+
+            for out in output:
+                if not out[0]:
+                    doc.write(f"{out[1]}\n")
+
+
 if __name__ == "__main__":
     user_ext = input("Enter the file extension: ").strip().lower()
     depth = 10
@@ -62,65 +88,22 @@ if __name__ == "__main__":
 
     if user_ext in [".pdf", ".doc", ".docx", ".txt"]:
         ext = user_ext
-        files_dir = "/data_nas5/qct/external_data/aarthi_scans/aarti_scans_270322/reports/random"  # input/source path
-        save_dir = "/data_nas5/qct/external_data/aarthi_scans/aarti_scans_270322/reports/random_anonymized"  # destination path
+        files_dir = r""  # input/source path
+        save_dir = r""  # destination path
 
-        # Get all files with the specified extension
-        all_files = get_files(files_dir, ext, folder_depth=depth)
+        anonymize_and_save(files_dir, save_dir, ext, same_line, other_tags, start_idx, batch_size, num_procs, depth)
 
     elif user_ext == ".dcm":
-        ext = ".dcm"
-        input_paths_file = ""  # Name of the text file containing paths which is created in "getting_positivecases_folderpath" notebook
-        empty_folders_save_dir = (
-            ""  # Directory to save empty folder paths where no .dcm is present
-        )
+        ext = user_ext
+        input_paths_file = r""  # Name of the text file containing paths
+        empty_folders_save_dir = r""  # Directory to save empty folder paths where no .dcm is present
         paths = read_paths_from_file(input_paths_file)
 
         for path in paths:
-            new_path = path.replace(
-                "save_dir_root_folder_path", "source_dir_root_folder_path"
-            )
+            new_path = path.replace(r"J:\positives", r"J:\Chest")
             files_dir = new_path
+            print(files_dir)
             save_dir = path
+            print(save_dir)
 
-            # Get all files with the specified extension
-            all_files = get_files(files_dir, ext, folder_depth=depth)
-            if not all_files:
-                save_empty_folder_path(files_dir, ext, empty_folders_save_dir)
-                continue
-
-    else:
-        print(
-            "Unsupported file extension. Please enter .pdf, .doc, .docx, .txt, or .dcm."
-        )
-        exit()
-
-    if ext:
-        end_idx = len(all_files)
-        failed_txt_path = os.path.join(save_dir, f"failed_{ext[1:]}.txt")
-        print(f"Found {ext} files: {len(all_files)}")
-
-        # Create the save directory if it doesn't exist
-        os.makedirs(save_dir, exist_ok=True)
-
-        partial_fun = partial(
-            anonymize_file,
-            files_dir=files_dir,
-            save_dir=save_dir,
-            ext=ext,
-            same_line=same_line,
-            other_tags=other_tags,
-        )
-
-        with open(failed_txt_path, "a") as doc:
-            for idx in tqdm(range(start_idx, end_idx, batch_size)):
-                samples = (
-                    all_files[idx : idx + batch_size]
-                    if idx + batch_size < end_idx
-                    else all_files[idx:end_idx]
-                )
-                output = apply_fun(samples, partial_fun, num_procs=num_procs)
-
-                for out in output:
-                    if not out[0]:
-                        doc.write(f"{out[1]}\n")
+            anonymize_and_save(files_dir, save_dir, ext, same_line, other_tags, start_idx, batch_size, num_procs, depth)
